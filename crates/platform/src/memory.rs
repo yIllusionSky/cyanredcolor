@@ -1,19 +1,19 @@
 //! 内存
 
-use std::{ptr::NonNull, marker::PhantomData, alloc::Layout};
-use super::instruction;
+use std::{ptr::NonNull, alloc::Layout};
+mod instruction_unit;
+pub(crate) use instruction_unit::InstructionUnit;
+mod data_unit;
 
-mod instruction_memory;
-mod data_memory;
 /// 内存单元
-/// 
-enum MemoryUnit{
+/// 以cpu的字长为对齐
+pub(crate) union MemoryUnit{
     /// 指令类型
-    instruction(instruction_memory::InstructionUnit),
+    instruction:instruction_unit::InstructionUnit,
     /// 数据块类型
-    data(data_memory::DataUnit),
+    data:data_unit::DataUnit,
     /// 字节类型
-    byte(u8),
+    byte:usize,
 }
 
 /// 内存空间
@@ -29,11 +29,10 @@ struct MemorySpace{
 impl MemorySpace{
     /// 创建一片新的内存空间
     /// 
-    /// `align_size`：对齐大小
-    /// 
-    /// `size`：内存块数量 
-    fn new(unit_count:usize,align_size:usize)->color_eyre::Result<MemorySpace>{
-
+    /// `size`：内存块数量(每一块为cpu的字长大小)
+    pub fn new(unit_count:usize)->color_eyre::Result<MemorySpace>{
+        // 以usize进行对齐
+        let align_size=std::mem::align_of::<usize>();
         let layout=std::alloc::Layout::from_size_align(unit_count,align_size)?;
         
         let ptr=unsafe{std::alloc::alloc(layout) as *mut MemoryUnit};
